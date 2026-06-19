@@ -3,8 +3,9 @@ import { prisma } from "@/lib/db"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
-import { updateLesson, deleteLesson, movePage, deletePage } from "./actions"
+import { updateLesson, movePage, deletePage } from "./actions"
 import { UploadForm } from "./_components/UploadForm"
+import { DeleteLessonButton } from "./_components/DeleteLessonButton"
 
 type ContentBlock = { type: string; key?: string }
 
@@ -45,7 +46,6 @@ export default async function LessonDetailPage({
   const canDelete = completedCount === 0
 
   const updateAction = updateLesson.bind(null, lessonId)
-  const deleteAction = deleteLesson.bind(null, lessonId)
 
   return (
     <div className="space-y-8 max-w-3xl">
@@ -121,17 +121,7 @@ export default async function LessonDetailPage({
               Uložiť
             </button>
             {canDelete ? (
-              <form action={deleteAction}>
-                <button
-                  type="submit"
-                  className="text-sm text-destructive hover:underline"
-                  onClick={(e) => {
-                    if (!confirm("Naozaj zmazať túto lekciu?")) e.preventDefault()
-                  }}
-                >
-                  Zmazať lekciu
-                </button>
-              </form>
+              <DeleteLessonButton lessonId={lessonId} />
             ) : (
               <span className="text-xs text-muted-foreground">
                 Lekciu nie je možné zmazať — {completedCount} účastník(ov) ju dokončil.

@@ -3,3 +3,6 @@
 .next/
 node_modules/
 uploads/
+*.png
+*.jpg
+next-env.d.ts

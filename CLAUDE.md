@@ -117,9 +117,7 @@ MinIO console: http://localhost:9001 (minioadmin / minioadmin)
 
 ## What Is Still TODO
 
-- `app/(app)/courses/new/` — create course form
-- `app/(app)/courses/[id]/` — course detail (trainer view: edit params, manage lessons/participants/trainers)
-- `app/(app)/courses/[id]/` — course detail (participant view: progress, lesson list)
+- `app/(app)/courses/[id]/` — course detail participant view (progress stats, lesson list)
 - `app/(app)/courses/[id]/lessons/new/` — lesson creation + page editor
 - `app/(app)/courses/[id]/lessons/[lessonId]/` — lesson page editor (trainer)
 - `app/(app)/courses/[id]/lessons/[lessonId]/take/` — slide-by-slide lesson viewer (participant, timer)

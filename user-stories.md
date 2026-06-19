@@ -4,7 +4,7 @@
 3. Účastník 
 
 # Registrácia 
-Ako administrátor sa môžem registrovať na základe e-mailovej pozvánky od iného dministrátora 
+Ako administrátor sa môžem registrovať na základe e-mailovej pozvánky od iného administrátora 
 Ako školiteľ sa môžem registrovať na základe e-mailovej pozvánky od administrátora 
 Ako účastník sa môžem registrovať na základe e-mailovej pozvánky od školiteľa alebo administrátora, pozvánka musí byť zároveň pozvánkou do kurzu. 
 Ak mi príde pozvánka ale už som registrovaný pod inou rolou tak po prihlásení cez link dostanem oprávnenia novej roly. 

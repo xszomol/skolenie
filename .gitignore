@@ -6,3 +6,4 @@ uploads/
 *.png
 *.jpg
 next-env.d.ts
+tsconfig.tsbuildinfo

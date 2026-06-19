@@ -40,7 +40,7 @@ export async function updateLesson(lessonId: string, formData: FormData) {
     },
   })
 
-  revalidatePath(`/courses/${courseId}/lessons/${lessonId}`)
+  redirect(`/courses/${courseId}/lessons/${lessonId}?saved=1`)
 }
 
 export async function deleteLesson(lessonId: string) {
@@ -85,7 +85,21 @@ export async function deletePage(lessonId: string, pageId: string) {
 
   await prisma.lessonPage.delete({ where: { id: pageId } })
 
-  // Re-number remaining pages
+  await renumberPages(lessonId)
+  revalidatePath(`/courses/${courseId}/lessons/${lessonId}`)
+}
+
+export async function deletePages(lessonId: string, pageIds: string[]) {
+  if (pageIds.length === 0) return
+  const { courseId } = await requireLessonTrainerAccess(lessonId)
+
+  await prisma.lessonPage.deleteMany({ where: { id: { in: pageIds }, lessonId } })
+
+  await renumberPages(lessonId)
+  revalidatePath(`/courses/${courseId}/lessons/${lessonId}`)
+}
+
+async function renumberPages(lessonId: string) {
   const remaining = await prisma.lessonPage.findMany({
     where: { lessonId },
     orderBy: { order: "asc" },
@@ -95,6 +109,4 @@ export async function deletePage(lessonId: string, pageId: string) {
       prisma.lessonPage.update({ where: { id: p.id }, data: { order: i + 1 } })
     )
   )
-
-  revalidatePath(`/courses/${courseId}/lessons/${lessonId}`)
 }

@@ -56,12 +56,14 @@ export async function POST(
   // Convert to page images and create LessonPage records
   const pageKeys = await convertToPages(buffer, ext, lessonId)
 
+
   await prisma.$transaction([
     prisma.lessonPage.deleteMany({ where: { lessonId } }),
     prisma.lessonPage.createMany({
-      data: pageKeys.map((key, i) => ({
+      data: pageKeys.map(({ key, title }, i) => ({
         lessonId,
         order: i + 1,
+        title: title ?? null,
         content: [{ type: "image", key }],
       })),
     }),

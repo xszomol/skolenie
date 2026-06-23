@@ -104,7 +104,7 @@ export function TestRunner({
   return (
     <div className="max-w-2xl space-y-6 pb-24">
       {/* Sticky header with timer + progress */}
-      <div className="sticky top-14 z-30 -mx-6 px-6 py-3 bg-background/90 backdrop-blur border-b">
+      <div className="sticky top-14 z-30 -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 bg-background/90 backdrop-blur border-b">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-base font-semibold truncate">Test — {lessonName}</h1>

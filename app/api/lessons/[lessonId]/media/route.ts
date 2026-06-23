@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
 import { uploadFile } from "@/lib/storage"
+import busboy from "busboy"
 
 const IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "gif", "webp", "svg", "avif", "bmp", "tiff", "tif"])
 const VIDEO_EXTS = new Set(["mp4", "webm", "mov", "avi", "mkv", "m4v"])
@@ -11,12 +12,61 @@ function getMediaType(mime: string, filename: string): "image" | "video" | "audi
   if (mime.startsWith("image/")) return "image"
   if (mime.startsWith("video/")) return "video"
   if (mime.startsWith("audio/")) return "audio"
-  // Fallback: extension-based detection (handles uppercase extensions, empty MIME types)
   const ext = filename.split(".").pop()?.toLowerCase() ?? ""
   if (IMAGE_EXTS.has(ext)) return "image"
   if (VIDEO_EXTS.has(ext)) return "video"
   if (AUDIO_EXTS.has(ext)) return "audio"
   return null
+}
+
+async function parseMultipart(
+  request: Request,
+  contentType: string
+): Promise<{ buffer: Buffer; mimeType: string; filename: string }> {
+  // Collect the full body first to avoid stream piping issues with Next.js internals
+  if (!request.body) throw new Error("No request body")
+
+  const reader = request.body.getReader()
+  const chunks: Uint8Array[] = []
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    if (value) chunks.push(value)
+  }
+  const rawBody = Buffer.concat(chunks.map((c) => Buffer.from(c)))
+
+  return new Promise((resolve, reject) => {
+    const bb = busboy({
+      headers: { "content-type": contentType },
+      limits: { fileSize: 100 * 1024 * 1024 },
+    })
+
+    let resolved = false
+
+    bb.on("file", (_field, file, info) => {
+      const fileChunks: Buffer[] = []
+      file.on("data", (chunk) => fileChunks.push(chunk as Buffer))
+      file.on("close", () => {
+        if (!resolved) {
+          resolved = true
+          resolve({
+            buffer: Buffer.concat(fileChunks),
+            mimeType: info.mimeType || "application/octet-stream",
+            filename: info.filename,
+          })
+        }
+      })
+      file.on("error", reject)
+    })
+
+    bb.on("error", reject)
+    bb.on("finish", () => {
+      if (!resolved) reject(new Error("No file field in request"))
+    })
+
+    bb.write(rawBody)
+    bb.end()
+  })
 }
 
 export async function POST(
@@ -45,17 +95,23 @@ export async function POST(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const formData = await request.formData()
-  const file = formData.get("file") as File | null
-  if (!file) return NextResponse.json({ error: "No file" }, { status: 400 })
+  const contentType = request.headers.get("content-type") ?? ""
+  if (!contentType.includes("multipart/form-data")) {
+    return NextResponse.json({ error: "Expected multipart/form-data" }, { status: 400 })
+  }
 
-  const mediaType = getMediaType(file.type, file.name)
-  if (!mediaType) return NextResponse.json({ error: "Unsupported file type" }, { status: 400 })
+  try {
+    const { buffer, mimeType, filename } = await parseMultipart(request, contentType)
 
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin"
-  const key = `lessons/${lessonId}/media/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`
-  const buffer = Buffer.from(await file.arrayBuffer())
-  await uploadFile(key, buffer, file.type)
+    const mediaType = getMediaType(mimeType, filename)
+    if (!mediaType) return NextResponse.json({ error: "Unsupported file type" }, { status: 400 })
 
-  return NextResponse.json({ key, mediaType })
+    const ext = filename.split(".").pop()?.toLowerCase() ?? "bin"
+    const key = `lessons/${lessonId}/media/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`
+
+    await uploadFile(key, buffer, mimeType || "application/octet-stream")
+    return NextResponse.json({ key, mediaType })
+  } catch (e) {
+    return NextResponse.json({ error: `Upload failed: ${String(e)}` }, { status: 500 })
+  }
 }

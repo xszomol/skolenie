@@ -480,27 +480,27 @@ export function PageContentEditor({
         </DndContext>
       </>
 
-      {/* Preview modal — lightbox overlay */}
+      {/* Preview modal — scrollable lightbox */}
       {previewing && (() => {
         const allBlocks = items.map((i) => i.block)
         const imageBlock = allBlocks.find((b) => b.type === "image")
         const textBlocks = allBlocks.filter((b) => b.type !== "image")
         return (
           <div
-            className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-8"
+            className="fixed inset-0 z-50 bg-black/80 overflow-y-auto"
             onClick={() => setPreviewing(false)}
           >
+            <button
+              type="button"
+              onClick={() => setPreviewing(false)}
+              className="fixed top-4 right-4 z-10 text-white/70 hover:text-white text-2xl leading-none"
+              aria-label="Zavrieť náhľad"
+            >✕</button>
+
             <div
-              className="relative w-full max-w-3xl"
+              className="w-full max-w-3xl mx-auto py-10 px-4"
               onClick={(e) => e.stopPropagation()}
             >
-              <button
-                type="button"
-                onClick={() => setPreviewing(false)}
-                className="absolute -top-10 right-0 text-white/70 hover:text-white text-2xl leading-none"
-                aria-label="Zavrieť náhľad"
-              >✕</button>
-
               <div className="rounded-xl bg-white overflow-hidden shadow-2xl">
                 {imageBlock && imageBlock.type === "image" && (
                   <div className="relative w-full bg-muted" style={{ aspectRatio: "16/9" }}>

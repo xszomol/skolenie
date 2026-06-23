@@ -2,7 +2,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, ChevronDown } from "lucide-react"
 import { computeParticipantProgress } from "@/lib/progress"
 import {
   inviteParticipant,
@@ -16,6 +16,15 @@ import { InviteForm } from "./_components/InviteForm"
 import { SortableLessonList } from "./_components/SortableLessonList"
 
 type ParticipantState = "not-started" | "in-progress" | "done"
+
+type LessonDetail = {
+  id: string
+  name: string
+  mandatory: boolean
+  hasTest: boolean
+  done: boolean
+  testPassed: boolean | null
+}
 
 function participantState(percent: number, color: "green" | "orange" | "red" | null): ParticipantState {
   if (percent === 0) return "not-started"
@@ -79,7 +88,7 @@ export default async function CourseDetailPage({
   if (!isAdmin && !isCourseTrainer && !isParticipant) notFound()
 
   // Progress data for participant list
-  let participantProgress: Array<{ userId: string; percent: number; color: "green" | "orange" | "red" | null }> = []
+  let participantProgress: Array<{ userId: string; percent: number; color: "green" | "orange" | "red" | null; lessonDetails: LessonDetail[] }> = []
 
   if (canEdit && course.participants.length > 0) {
     const [allLessonProgress, allTestAttempts] = await Promise.all([
@@ -87,10 +96,24 @@ export default async function CourseDetailPage({
       prisma.testAttempt.findMany({ where: { test: { lesson: { courseId: id } } } }),
     ])
 
-    participantProgress = course.participants.map((p) => ({
-      userId: p.userId,
-      ...computeParticipantProgress(p.userId, course.lessons, allLessonProgress, allTestAttempts),
-    }))
+    participantProgress = course.participants.map((p) => {
+      const userLessonProgress = allLessonProgress.filter((lp) => lp.userId === p.userId)
+      const userAttempts = allTestAttempts.filter((a) => a.userId === p.userId && a.finishedAt)
+      const lessonDetails: LessonDetail[] = course.lessons.map((l) => {
+        const done = userLessonProgress.some((lp) => lp.lessonId === l.id && lp.completedAt)
+        let testPassed: boolean | null = null
+        if (l.test) {
+          const attempts = userAttempts.filter((a) => a.testId === l.test!.id)
+          if (attempts.length > 0) testPassed = attempts.some((a) => a.passed === true)
+        }
+        return { id: l.id, name: l.name, mandatory: l.mandatory, hasTest: !!l.test, done, testPassed }
+      })
+      return {
+        userId: p.userId,
+        ...computeParticipantProgress(p.userId, course.lessons, allLessonProgress, allTestAttempts),
+        lessonDetails,
+      }
+    })
   }
 
   // Test attempts + lesson progress of the current participant
@@ -290,7 +313,7 @@ export default async function CourseDetailPage({
               const prog = participantProgress.find((pp) => pp.userId === p.userId)
               const percent = prog?.percent ?? 0
               const color = prog?.color ?? null
-              return { p, percent, color, state: participantState(percent, color) }
+              return { p, percent, color, state: participantState(percent, color), lessonDetails: prog?.lessonDetails ?? [] }
             })
 
             const counts: Record<ParticipantState, number> = {
@@ -337,38 +360,63 @@ export default async function CourseDetailPage({
                     <p className="px-4 py-6 text-sm text-muted-foreground text-center">
                       Žiadni účastníci v tejto kategórii.
                     </p>
-                  ) : visible.map(({ p, percent, color, state }) => {
+                  ) : visible.map(({ p, percent, color, state, lessonDetails }) => {
                     const removeAction = removeParticipant.bind(null, id, p.userId)
                     return (
-                      <div key={p.userId} className="flex items-center justify-between px-4 py-3 gap-4">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                            color === "green"  ? "bg-green-500" :
-                            color === "orange" ? "bg-orange-400" :
-                            color === "red"    ? "bg-red-500" :
-                            state === "in-progress" ? "bg-orange-400/50" :
-                                                "bg-muted-foreground/30"
-                          }`} />
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {p.user.firstName} {p.user.lastName}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate">{p.user.email}</p>
+                      <details key={p.userId} className="group">
+                        <summary className="flex items-center justify-between px-4 py-3 gap-3 cursor-pointer list-none [&::-webkit-details-marker]:hidden hover:bg-muted/30 transition-colors">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                              color === "green"  ? "bg-green-500" :
+                              color === "orange" ? "bg-orange-400" :
+                              color === "red"    ? "bg-red-500" :
+                              state === "in-progress" ? "bg-orange-400/50" :
+                                                  "bg-muted-foreground/30"
+                            }`} />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {p.user.firstName} {p.user.lastName}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">{p.user.email}</p>
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-4 shrink-0">
-                          <span className="text-sm text-muted-foreground w-10 text-right tabular-nums">
-                            {percent} %
-                          </span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-sm text-muted-foreground tabular-nums">{percent} %</span>
+                            <ChevronDown className="h-4 w-4 text-muted-foreground/60 transition-transform group-open:rotate-180" />
+                          </div>
+                        </summary>
+                        <div className="px-4 pb-3 pt-2 space-y-1 border-t bg-muted/20">
+                          {lessonDetails.map((l) => (
+                            <div key={l.id} className="flex items-center gap-2 text-xs py-0.5">
+                              <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${l.done ? "bg-green-500" : "bg-muted-foreground/25"}`} />
+                              <span className="flex-1 min-w-0 truncate text-muted-foreground">
+                                {l.name}
+                                {!l.mandatory && <span className="ml-1 opacity-60">(vol.)</span>}
+                              </span>
+                              {l.hasTest ? (
+                                <span className={`shrink-0 ${
+                                  l.testPassed === true  ? "text-green-600 dark:text-green-400" :
+                                  l.testPassed === false ? "text-orange-500" :
+                                                           "text-muted-foreground/40"
+                                }`}>
+                                  {l.testPassed === true ? "✓ test" : l.testPassed === false ? "✗ test" : "– test"}
+                                </span>
+                              ) : (
+                                <span className={`shrink-0 ${l.done ? "text-green-600 dark:text-green-400" : "text-muted-foreground/30"}`}>
+                                  {l.done ? "✓" : "–"}
+                                </span>
+                              )}
+                            </div>
+                          ))}
                           {!p.confirmedAt && (
-                            <form action={removeAction}>
+                            <form action={removeAction} className="pt-1.5">
                               <button type="submit" className="text-xs text-destructive hover:underline">
-                                Odobrať
+                                Odobrať účastníka
                               </button>
                             </form>
                           )}
                         </div>
-                      </div>
+                      </details>
                     )
                   })}
                 </div>

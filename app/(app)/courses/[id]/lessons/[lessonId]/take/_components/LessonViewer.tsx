@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, ArrowRight, Clock, CheckCircle2, ListChecks } from "lucide-react"
@@ -159,18 +158,14 @@ export function LessonViewer({
       {/* Slide */}
       <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
         {current.imageKey ? (
-          <div className="relative w-full bg-muted" style={{ aspectRatio: "16/9" }}>
-            <Image
-              src={`/api/files/${current.imageKey}`}
-              alt={current.title ?? `Stránka ${index + 1}`}
-              fill
-              className="object-contain"
-              unoptimized
-              priority
-            />
-          </div>
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={`/api/files/${current.imageKey}`}
+            alt={current.title ?? `Stránka ${index + 1}`}
+            className="w-full h-auto block"
+          />
         ) : !current.imageKey && current.textBlocks.length === 0 ? (
-          <div className="relative w-full bg-muted flex items-center justify-center" style={{ aspectRatio: "16/9" }}>
+          <div className="w-full bg-muted flex items-center justify-center py-16">
             <span className="text-sm text-muted-foreground">Bez obsahu</span>
           </div>
         ) : null}
@@ -187,7 +182,7 @@ export function LessonViewer({
       </div>
 
       {/* Controls */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <button
           type="button"
           onClick={goPrev}
@@ -197,7 +192,7 @@ export function LessonViewer({
           <ArrowLeft className="h-4 w-4" /> Späť
         </button>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           {hasTest && lessonAlreadyDone && (
             <Link
               href={`/courses/${courseId}/lessons/${lessonId}/test/take`}

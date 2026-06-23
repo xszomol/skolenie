@@ -1,0 +1,11 @@
+# Skolenie — Caddy reverse proxy
+# Caddy auto-obtains and renews TLS certificates via Let's Encrypt.
+# Set APP_DOMAIN and MINIO_DOMAIN in .env.production before starting.
+
+{$APP_DOMAIN} {
+    reverse_proxy app:3000
+}
+
+{$MINIO_DOMAIN} {
+    reverse_proxy minio:9000
+}

@@ -7,7 +7,7 @@ import { UploadForm } from "./_components/UploadForm"
 import { DeleteLessonButton } from "./_components/DeleteLessonButton"
 import { LessonPages } from "./_components/LessonPages"
 
-type ContentBlock = { type: string; key?: string }
+import { parseContent, type ImageBlock } from "@/types/content"
 
 export default async function LessonDetailPage({
   params,
@@ -186,13 +186,18 @@ export default async function LessonDetailPage({
 
         <LessonPages
           lessonId={lessonId}
+          courseId={id}
           participantCount={lesson.course._count.participants}
-          pages={lesson.pages.map((page) => ({
-            id: page.id,
-            order: page.order,
-            title: page.title,
-            imageKey: (page.content as ContentBlock[]).find((b) => b.type === "image")?.key ?? null,
-          }))}
+          pages={lesson.pages.map((page) => {
+            const blocks = parseContent(page.content)
+            return {
+              id: page.id,
+              order: page.order,
+              title: page.title,
+              imageKey: blocks.find((b): b is ImageBlock => b.type === "image")?.key ?? null,
+              textBlocks: blocks.filter((b) => b.type !== "image"),
+            }
+          })}
         />
       </section>
     </div>

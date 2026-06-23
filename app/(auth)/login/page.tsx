@@ -1,6 +1,7 @@
 import { signIn } from "@/auth"
 import { AuthError } from "next-auth"
 import { redirect } from "next/navigation"
+import Link from "next/link"
 import { GraduationCap } from "lucide-react"
 
 export default async function LoginPage({
@@ -59,7 +60,12 @@ export default async function LoginPage({
             />
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="password" className="text-sm font-medium">Heslo</label>
+            <div className="flex items-center justify-between">
+              <label htmlFor="password" className="text-sm font-medium">Heslo</label>
+              <Link href="/forgot-password" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                Zabudnuté heslo?
+              </Link>
+            </div>
             <input
               id="password"
               name="password"

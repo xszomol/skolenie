@@ -30,6 +30,29 @@ model User {
   testAttempts       TestAttempt[]
   pageProgress       LessonPageProgress[]
   lessonProgress     LessonProgress[]
+  passwordResets          PasswordResetToken[]
+  pendingPasswordChanges  PendingPasswordChange[]
+}
+
+model PendingPasswordChange {
+  id              String    @id @default(cuid())
+  token           String    @unique @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  newPasswordHash String
+  expiresAt       DateTime
+  usedAt          DateTime?
+  createdAt       DateTime  @default(now())
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  token     String    @unique @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 }
 
 model UserRole {

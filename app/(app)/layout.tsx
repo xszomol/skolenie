@@ -1,7 +1,7 @@
 import { auth, signOut } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { GraduationCap, LogOut } from "lucide-react"
+import { GraduationCap, LogOut, Users } from "lucide-react"
 import { ThemeToggle } from "@/components/ThemeToggle"
 
 function initials(name: string | null | undefined) {
@@ -35,14 +35,23 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </Link>
 
           <div className="flex items-center gap-3">
+            {session.user.roles.includes("ADMIN") && (
+              <Link
+                href="/admin/users"
+                className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-md px-2 py-1.5 hover:bg-muted"
+              >
+                <Users className="h-4 w-4" />
+                <span className="hidden sm:inline">Používatelia</span>
+              </Link>
+            )}
             <ThemeToggle />
 
-            <div className="flex items-center gap-2 pl-1">
+            <Link href="/profile" className="flex items-center gap-2 pl-1 rounded-md px-2 py-1 hover:bg-muted transition-colors">
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-semibold">
                 {initials(session.user.name)}
               </span>
               <span className="text-sm font-medium hidden sm:inline">{session.user.name}</span>
-            </div>
+            </Link>
 
             <form action={logout}>
               <button

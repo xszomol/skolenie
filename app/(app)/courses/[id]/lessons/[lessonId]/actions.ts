@@ -55,27 +55,41 @@ export async function deleteLesson(lessonId: string) {
   redirect(`/courses/${courseId}`)
 }
 
-export async function movePage(lessonId: string, pageId: string, direction: "up" | "down") {
+export async function updatePageTitle(lessonId: string, pageId: string, title: string) {
+  await requireLessonTrainerAccess(lessonId)
+
+  await prisma.lessonPage.update({
+    where: { id: pageId },
+    data: { title: title.trim() || null },
+  })
+}
+
+export async function updatePageContent(lessonId: string, pageId: string, content: unknown[]) {
+  await requireLessonTrainerAccess(lessonId)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await prisma.lessonPage.update({ where: { id: pageId }, data: { content: content as any } })
+}
+
+export async function addBlankPage(lessonId: string) {
   const { courseId } = await requireLessonTrainerAccess(lessonId)
 
-  const pages = await prisma.lessonPage.findMany({
-    where: { lessonId },
-    orderBy: { order: "asc" },
+  const count = await prisma.lessonPage.count({ where: { lessonId } })
+  await prisma.lessonPage.create({
+    data: { lessonId, order: count + 1, content: [] },
   })
 
-  const idx = pages.findIndex((p) => p.id === pageId)
-  if (idx === -1) return
+  revalidatePath(`/courses/${courseId}/lessons/${lessonId}`)
+}
 
-  const swapIdx = direction === "up" ? idx - 1 : idx + 1
-  if (swapIdx < 0 || swapIdx >= pages.length) return
+export async function reorderPages(lessonId: string, orderedIds: string[]) {
+  const { courseId } = await requireLessonTrainerAccess(lessonId)
 
-  const a = pages[idx]
-  const b = pages[swapIdx]
-
-  await prisma.$transaction([
-    prisma.lessonPage.update({ where: { id: a.id }, data: { order: b.order } }),
-    prisma.lessonPage.update({ where: { id: b.id }, data: { order: a.order } }),
-  ])
+  await prisma.$transaction(
+    orderedIds.map((id, index) =>
+      prisma.lessonPage.update({ where: { id }, data: { order: index + 1 } })
+    )
+  )
 
   revalidatePath(`/courses/${courseId}/lessons/${lessonId}`)
 }

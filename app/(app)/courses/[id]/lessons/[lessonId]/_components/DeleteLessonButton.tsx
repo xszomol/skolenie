@@ -1,22 +1,24 @@
 "use client"
 
+import { useTransition } from "react"
 import { deleteLesson } from "../actions"
 
 export function DeleteLessonButton({ lessonId }: { lessonId: string }) {
-  const action = deleteLesson.bind(null, lessonId)
+  const [pending, startTransition] = useTransition()
+
+  function handleClick() {
+    if (!confirm("Naozaj zmazať túto lekciu? Akcia je nevratná.")) return
+    startTransition(() => { deleteLesson(lessonId) })
+  }
+
   return (
-    <form action={action}>
-      <button
-        type="submit"
-        onClick={(e) => {
-          if (!confirm("Naozaj zmazať túto lekciu? Akcia je nevratná.")) {
-            e.preventDefault()
-          }
-        }}
-        className="text-sm text-destructive hover:underline"
-      >
-        Zmazať lekciu
-      </button>
-    </form>
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={pending}
+      className="text-sm text-destructive hover:underline disabled:opacity-50"
+    >
+      {pending ? "Mažem…" : "Zmazať lekciu"}
+    </button>
   )
 }

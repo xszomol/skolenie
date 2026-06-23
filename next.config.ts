@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
       allowedOrigins: ["localhost:3000"],
       bodySizeLimit: "100mb",
     },
+    middlewareClientMaxBodySize: "100mb",
   },
 }
 

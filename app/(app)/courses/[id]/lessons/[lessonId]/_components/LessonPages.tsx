@@ -341,7 +341,7 @@ export function LessonPages({
       {/* Lightbox */}
       {preview !== null && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center"
+          className="fixed inset-0 z-50 bg-black/80 overflow-y-auto"
           onClick={closePreview}
           onKeyDown={onKeyDown}
           tabIndex={-1}
@@ -350,31 +350,45 @@ export function LessonPages({
           aria-label="Náhľad stránky"
           ref={(el) => el?.focus()}
         >
+          {/* Close button — always visible */}
+          <button
+            type="button"
+            onClick={closePreview}
+            className="fixed top-4 right-4 z-10 text-white/70 hover:text-white text-2xl leading-none"
+            aria-label="Zavrieť"
+          >✕</button>
+
+          {/* Prev / next — always visible */}
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); prev() }}
+            disabled={preview === 0}
+            className="fixed left-4 top-1/2 -translate-y-1/2 z-10 text-white/70 hover:text-white disabled:opacity-20 text-4xl px-2"
+            aria-label="Predchádzajúca stránka"
+          >‹</button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); next() }}
+            disabled={preview === pages.length - 1}
+            className="fixed right-4 top-1/2 -translate-y-1/2 z-10 text-white/70 hover:text-white disabled:opacity-20 text-4xl px-2"
+            aria-label="Nasledujúca stránka"
+          >›</button>
+
+          {/* Scrollable content */}
           <div
-            className="relative flex flex-col items-center gap-4 max-w-5xl w-full px-16"
+            className="flex flex-col items-center gap-4 max-w-5xl w-full mx-auto px-16 py-10"
             onClick={(e) => e.stopPropagation()}
           >
-            <button
-              type="button"
-              onClick={closePreview}
-              className="absolute -top-10 right-0 text-white/70 hover:text-white text-2xl leading-none"
-              aria-label="Zavrieť"
-            >✕</button>
-
             <p className="text-white/60 text-sm">{preview + 1} / {pages.length}</p>
 
             <div className="w-full bg-white rounded-lg overflow-hidden">
               {pages[preview].imageKey && (
-                <div className="relative w-full" style={{ aspectRatio: "16/9" }}>
-                  <Image
-                    src={`/api/files/${pages[preview].imageKey}`}
-                    alt={pages[preview].title ?? `Stránka ${pages[preview].order}`}
-                    fill
-                    className="object-contain"
-                    unoptimized
-                    priority
-                  />
-                </div>
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`/api/files/${pages[preview].imageKey}`}
+                  alt={pages[preview].title ?? `Stránka ${pages[preview].order}`}
+                  className="w-full h-auto block"
+                />
               )}
               {pages[preview].textBlocks.length > 0 && (
                 <div className={`p-5 text-gray-900 ${pages[preview].imageKey ? "border-t" : ""}`}>
@@ -392,21 +406,6 @@ export function LessonPages({
               {pages[preview].title ?? `Stránka ${pages[preview].order}`}
             </p>
           </div>
-
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); prev() }}
-            disabled={preview === 0}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white disabled:opacity-20 text-4xl px-2"
-            aria-label="Predchádzajúca stránka"
-          >‹</button>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); next() }}
-            disabled={preview === pages.length - 1}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white disabled:opacity-20 text-4xl px-2"
-            aria-label="Nasledujúca stránka"
-          >›</button>
         </div>
       )}
     </>

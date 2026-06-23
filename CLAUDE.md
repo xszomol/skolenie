@@ -18,7 +18,7 @@ A single user account can hold multiple roles. The UI shows a separate section p
 
 **Course** — has name, description, start/end date, flag for post-course material access, one *primary trainer*, zero or more additional trainers, zero or more participants.
 
-**Lesson** — belongs to a course; has name, mandatory/optional flag, per-page minimum time (default 30 s). Pages uploaded as PDF or PPT (converted server-side via LibreOffice + python-pptx). Page order is reorderable.
+**Lesson** — belongs to a course; has name, mandatory/optional flag, per-page minimum time (default 30 s). Pages uploaded as PDF or PPT (converted server-side via LibreOffice + python-pptx), or built manually in the page editor (heading / paragraph / bullet list / media blocks). Page order is reorderable.
 
 **Test** — optional, attached to a lesson. Has: intro text, total time limit, minimum pass %, retry limit, random question order flag. Questions have arbitrary answer choices, one or more correct answers, and a point value (default 1).
 
@@ -50,6 +50,8 @@ A single user account can hold multiple roles. The UI shows a separate section p
 | PDF/PPT conversion | LibreOffice headless + python-pptx (system deps, not npm) | MPL-2.0 / LGPL |
 | Email | Nodemailer + SMTP | MIT |
 | Client data fetching | TanStack Query v5 | MIT |
+| Drag-and-drop | @dnd-kit/core + sortable | MIT |
+| Multipart upload | busboy | MIT |
 
 ## Project Structure
 
@@ -80,6 +82,7 @@ skolenie/
 │   │           ├── _components/
 │   │           │   ├── CourseHeader.tsx          — title, dates, status badge, edit/delete buttons
 │   │           │   ├── InviteForm.tsx            — invite trainer or participant by email
+│   │           │   ├── SortableLessonList.tsx    — drag-to-reorder lessons (trainer)
 │   │           │   └── DeleteCourseButton.tsx
 │   │           └── lessons/
 │   │               ├── new/page.tsx + actions.ts — create lesson form
@@ -87,9 +90,12 @@ skolenie/
 │   │                   ├── page.tsx              — lesson detail (pages list, upload, test link)
 │   │                   ├── actions.ts
 │   │                   ├── _components/
-│   │                   │   ├── LessonPages.tsx   — page list with preview images
+│   │                   │   ├── LessonPages.tsx   — sortable page list with lightbox preview
 │   │                   │   ├── UploadForm.tsx    — PDF/PPT upload, triggers conversion
 │   │                   │   └── DeleteLessonButton.tsx
+│   │                   ├── pages/[pageId]/
+│   │                   │   ├── page.tsx          — page content editor entry point
+│   │                   │   └── _components/PageContentEditor.tsx  — block editor (heading/paragraph/list/media)
 │   │                   ├── take/
 │   │                   │   ├── page.tsx          — participant lesson viewer entry point
 │   │                   │   ├── actions.ts        — record page progress (time spent)
@@ -107,14 +113,16 @@ skolenie/
 │   │                               └── AttemptResult.tsx     — score, pass/fail, per-question breakdown
 │   ├── api/
 │   │   ├── auth/[...nextauth]/route.ts
-│   │   ├── invitations/route.ts         — POST: create invitation + send email
-│   │   ├── files/[...path]/route.ts     — proxy signed MinIO URLs to the browser
-│   │   └── lessons/[lessonId]/upload/route.ts  — receive PDF/PPT, convert, store pages
+│   │   ├── invitations/route.ts                  — POST: create invitation + send email
+│   │   ├── files/[...path]/route.ts              — proxy MinIO objects to browser (auth-gated, range support)
+│   │   ├── lessons/[lessonId]/upload/route.ts    — receive PDF/PPT, convert, store pages
+│   │   └── lessons/[lessonId]/media/route.ts     — receive image/video/audio for page content blocks
 │   ├── globals.css
 │   ├── layout.tsx                       — root layout: Inter font, theme script, Providers
 │   ├── page.tsx                         — redirects → /courses
 │   └── providers.tsx                    — SessionProvider + QueryClientProvider
 ├── components/
+│   ├── BlockRenderer.tsx                — renders a ContentBlock[] array (heading/paragraph/list/media)
 │   └── ThemeToggle.tsx                  — dark/light mode toggle (persists to localStorage)
 ├── lib/
 │   ├── db.ts                            — Prisma client singleton
@@ -124,11 +132,13 @@ skolenie/
 │   ├── invitations.ts                   — createInvitation() business logic
 │   ├── grading.ts                       — pure grading helpers (score, pass/fail)
 │   ├── progress.ts                      — computeParticipantProgress() for course detail view
+│   ├── rate-limit.ts                    — simple in-memory rate limiter
 │   └── utils.ts                         — cn() Tailwind helper
+├── types/
+│   ├── content.ts                       — ContentBlock union type (ImageBlock, HeadingBlock, …)
+│   └── next-auth.d.ts                   — extends Session with id + roles[]
 ├── prisma/
 │   └── schema.prisma                    — full data model (see Database Schema section)
-├── types/
-│   └── next-auth.d.ts                   — extends Session with id + roles[]
 ├── auth.ts                              — NextAuth v5 config (JWT strategy, unstable_update exported)
 ├── middleware.ts                        — auth guard; excludes login, register, forgot/reset-password, confirm-password-change, _next/static
 ├── Dockerfile                           — two-stage build (builder + runner); entrypoint runs prisma db push
@@ -194,21 +204,34 @@ docker compose -f docker-compose.prod.yml --env-file .env.production up -d --bui
 
 Caddy fetches TLS certificates automatically. The entrypoint applies `prisma db push` on every boot (no-op if schema is already in sync).
 
-**Note:** The production Dockerfile does not yet install LibreOffice or python-pptx. Lesson file uploads will fail in production until these system dependencies are added to the runner stage.
+**Note:** The production Dockerfile installs LibreOffice, poppler-utils, and python-pptx in the runner stage. PDF/PPT conversion works in production.
 
 ## What Is Still TODO
 
-- Mobile layout polish
+### Must-fix before production
+1. ~~**Dockerfile: add LibreOffice + python-pptx**~~ — ✅ done; runner stage installs libreoffice, poppler-utils, python-pptx.
+2. ~~**MinIO CORS**~~ — ✅ done; `Caddyfile` injects `Access-Control-Allow-Origin` on the MinIO domain and handles preflight OPTIONS. MinIO healthcheck added to `docker-compose.prod.yml`.
+
+### Features / polish
+3. **Mobile layout** — most pages are built desktop-first; needs responsive pass (nav, course list, lesson viewer, test runner).
+4. **Participant progress on course detail** — trainers can see which participants completed which lessons but the display could be more informative (per-participant breakdown).
+5. **Email delivery in production** — `.env.production.example` has SMTP placeholders; needs a real SMTP provider configured before invitations/password flows work.
+
+### Nice-to-have
+6. **Rate limiting** — `lib/rate-limit.ts` exists but is not wired to any endpoint yet; add to auth routes and invitation endpoint.
+7. **Lesson page blank-add button** — trainers can upload PDF/PPT or edit existing pages but there is no "add blank page" shortcut on the lesson detail page (only inside the editor).
 
 ## Architecture Notes
 
 - All technologies must be free and open source (no SaaS dependencies).
 - Auth uses JWT session strategy (not database sessions); `unstable_update` is exported from `auth.ts` for session refresh after profile edits.
-- `LessonPage.content` is a JSON array of typed blocks — block schema lives in `lib/convert.ts` (`PageResult`). Extend to `types/content.ts` if a rich editor is added.
+- `LessonPage.content` is a JSON array of typed blocks defined in `types/content.ts` (`ContentBlock`). `BlockRenderer` renders them; `PageContentEditor` edits them. The same blocks are produced by the PDF/PPT converter (`lib/convert.ts`) for slide pages.
 - Test timer is purely client-side (`TestRunner.tsx`): `startedAt` is recorded server-side on attempt creation; deadline enforced on submission.
 - MinIO bucket is created lazily on first upload (`ensureBucket()` in `lib/storage.ts`).
-- Signed MinIO URLs are generated by the client SDK using `MINIO_ENDPOINT` — in production this must be the public hostname so browsers can fetch files.
+- File proxy at `/api/files/[...path]` is auth-gated and supports HTTP range requests (needed for video/audio playback). It reads directly from MinIO using the internal endpoint.
+- Media uploads to page content use `busboy` for multipart parsing (bypasses Next.js's internal `request.formData()` 10 MB limit). `next.config.ts` sets `experimental.middlewareClientMaxBodySize: "100mb"` to allow large request bodies through to route handlers.
 - Password changes from the profile page go through an email confirmation loop (`PendingPasswordChange`). Password resets from the login page use a simpler direct-reset flow (`PasswordResetToken`).
+- `DeleteLessonButton` calls the server action directly via `useTransition` — no `<form>` wrapper — to avoid nested-form hydration errors on the lesson detail page.
 
 ## Test Accounts (local dev seed)
 

@@ -9,6 +9,50 @@ const transporter = nodemailer.createTransport({
       : undefined,
 })
 
+export async function sendPasswordChangeConfirmationEmail({
+  to,
+  token,
+}: {
+  to: string
+  token: string
+}) {
+  const baseUrl = process.env.AUTH_URL ?? "http://localhost:3000"
+  const link = `${baseUrl}/confirm-password-change?token=${token}`
+
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM ?? "noreply@skolenie.local",
+    to,
+    subject: "Potvrdenie zmeny hesla — Školenie",
+    html: `
+      <p>Požiadali ste o zmenu hesla v systéme Školenie.</p>
+      <p><a href="${link}">Kliknite sem pre potvrdenie zmeny hesla</a></p>
+      <p>Odkaz platí 1 hodinu. Ak ste zmenu hesla nepožadovali, tento e-mail ignorujte — vaše heslo zostane nezmenené.</p>
+    `,
+  })
+}
+
+export async function sendPasswordResetEmail({
+  to,
+  token,
+}: {
+  to: string
+  token: string
+}) {
+  const baseUrl = process.env.AUTH_URL ?? "http://localhost:3000"
+  const link = `${baseUrl}/reset-password?token=${token}`
+
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM ?? "noreply@skolenie.local",
+    to,
+    subject: "Obnovenie hesla — Školenie",
+    html: `
+      <p>Požiadali ste o obnovenie hesla v systéme Školenie.</p>
+      <p><a href="${link}">Kliknite sem pre nastavenie nového hesla</a></p>
+      <p>Odkaz platí 1 hodinu. Ak ste obnovu hesla nepožadovali, tento e-mail ignorujte.</p>
+    `,
+  })
+}
+
 export async function sendInvitationEmail({
   to,
   inviterName,

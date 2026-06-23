@@ -1,6 +1,8 @@
 import { signIn } from "@/auth"
 import { AuthError } from "next-auth"
 import { redirect } from "next/navigation"
+import Link from "next/link"
+import { GraduationCap } from "lucide-react"
 
 export default async function LoginPage({
   searchParams,
@@ -24,13 +26,27 @@ export default async function LoginPage({
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/40">
-      <div className="w-full max-w-sm space-y-6 p-8 bg-card border rounded-lg shadow-sm">
-        <h1 className="text-2xl font-semibold">Prihlásenie</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-muted/60 via-background to-muted/40 p-4">
+      <div className="w-full max-w-sm space-y-6">
+        {/* Brand */}
+        <div className="flex flex-col items-center gap-3 text-center">
+          <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+            <GraduationCap className="h-7 w-7" />
+          </span>
+          <div>
+            <h1 className="text-2xl font-semibold">Školenie</h1>
+            <p className="text-sm text-muted-foreground">Systém pre správu školení</p>
+          </div>
+        </div>
 
-        {error === "invalid" && (
-          <p className="text-sm text-destructive">Nesprávny e-mail alebo heslo.</p>
-        )}
+        <div className="space-y-6 p-8 bg-card border rounded-xl shadow-lg">
+          <h2 className="text-lg font-medium">Prihlásenie</h2>
+
+          {error === "invalid" && (
+            <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">
+              Nesprávny e-mail alebo heslo.
+            </p>
+          )}
 
         <form action={login} className="space-y-4">
           <div className="space-y-1.5">
@@ -44,7 +60,12 @@ export default async function LoginPage({
             />
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="password" className="text-sm font-medium">Heslo</label>
+            <div className="flex items-center justify-between">
+              <label htmlFor="password" className="text-sm font-medium">Heslo</label>
+              <Link href="/forgot-password" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                Zabudnuté heslo?
+              </Link>
+            </div>
             <input
               id="password"
               name="password"
@@ -59,7 +80,8 @@ export default async function LoginPage({
           >
             Prihlásiť sa
           </button>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   )

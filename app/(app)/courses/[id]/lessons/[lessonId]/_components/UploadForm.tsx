@@ -8,6 +8,7 @@ export function UploadForm({ lessonId }: { lessonId: string }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -16,6 +17,7 @@ export function UploadForm({ lessonId }: { lessonId: string }) {
 
     setLoading(true)
     setError(null)
+    setSuccess(null)
 
     const body = new FormData()
     body.set("file", file)
@@ -33,7 +35,9 @@ export function UploadForm({ lessonId }: { lessonId: string }) {
       return
     }
 
+    const data = await res.json().catch(() => ({}))
     if (inputRef.current) inputRef.current.value = ""
+    setSuccess(`Úspešne nahraných ${data.pages ?? 0} stránok.`)
     router.refresh()
   }
 
@@ -58,6 +62,7 @@ export function UploadForm({ lessonId }: { lessonId: string }) {
         </button>
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
+      {success && <p className="text-sm text-green-700">{success}</p>}
       <p className="text-xs text-muted-foreground">
         Každá strana PDF alebo každý slide PPT sa stane jednou stránkou lekcie.
         Vyžaduje nainštalovaný <code>libreoffice</code> a <code>poppler-utils</code>.

@@ -2,18 +2,22 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import Image from "next/image"
-import { updateLesson, deleteLesson, movePage, deletePage } from "./actions"
+import { updateLesson } from "./actions"
 import { UploadForm } from "./_components/UploadForm"
+import { DeleteLessonButton } from "./_components/DeleteLessonButton"
+import { LessonPages } from "./_components/LessonPages"
 
-type ContentBlock = { type: string; key?: string }
+import { parseContent, type ImageBlock } from "@/types/content"
 
 export default async function LessonDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string; lessonId: string }>
+  searchParams: Promise<{ saved?: string }>
 }) {
   const { id, lessonId } = await params
+  const { saved } = await searchParams
   const session = await auth()
   if (!session) return null
 
@@ -45,10 +49,15 @@ export default async function LessonDetailPage({
   const canDelete = completedCount === 0
 
   const updateAction = updateLesson.bind(null, lessonId)
-  const deleteAction = deleteLesson.bind(null, lessonId)
 
   return (
     <div className="space-y-8 max-w-3xl">
+      {saved === "1" && (
+        <div className="rounded-md bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
+          Nastavenia lekcie boli uložené.
+        </div>
+      )}
+
       {/* Breadcrumb */}
       <p className="text-sm text-muted-foreground">
         <Link href={`/courses/${id}`} className="hover:underline">
@@ -121,17 +130,7 @@ export default async function LessonDetailPage({
               Uložiť
             </button>
             {canDelete ? (
-              <form action={deleteAction}>
-                <button
-                  type="submit"
-                  className="text-sm text-destructive hover:underline"
-                  onClick={(e) => {
-                    if (!confirm("Naozaj zmazať túto lekciu?")) e.preventDefault()
-                  }}
-                >
-                  Zmazať lekciu
-                </button>
-              </form>
+              <DeleteLessonButton lessonId={lessonId} />
             ) : (
               <span className="text-xs text-muted-foreground">
                 Lekciu nie je možné zmazať — {completedCount} účastník(ov) ju dokončil.
@@ -158,7 +157,7 @@ export default async function LessonDetailPage({
           <div className="border rounded-lg p-4 flex items-center justify-between">
             <div className="text-sm space-y-0.5">
               {lesson.test.timeLimit && (
-                <p className="text-muted-foreground">Časový limit: {lesson.test.timeLimit} s</p>
+                <p className="text-muted-foreground">Časový limit: {Math.round(lesson.test.timeLimit / 60)} min</p>
               )}
               {lesson.test.minPassPercent && (
                 <p className="text-muted-foreground">
@@ -183,94 +182,23 @@ export default async function LessonDetailPage({
 
       {/* Pages */}
       <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium">
-            Stránky ({lesson.pages.length})
-          </h2>
-          <span className="text-xs text-muted-foreground">
-            {lesson.course._count.participants} účastníkov v kurze
-          </span>
-        </div>
-
         <UploadForm lessonId={lessonId} />
 
-        {lesson.pages.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Zatiaľ žiadne stránky. Nahrajte PDF alebo PPT.</p>
-        ) : (
-          <div className="space-y-3">
-            {lesson.pages.map((page, idx) => {
-              const imageBlock = (page.content as ContentBlock[]).find(
-                (b) => b.type === "image"
-              )
-              const moveUpAction = movePage.bind(null, lessonId, page.id, "up")
-              const moveDownAction = movePage.bind(null, lessonId, page.id, "down")
-              const deletePageAction = deletePage.bind(null, lessonId, page.id)
-
-              return (
-                <div
-                  key={page.id}
-                  className="border rounded-lg p-3 flex items-center gap-4"
-                >
-                  {/* Thumbnail */}
-                  {imageBlock?.key ? (
-                    <div className="w-24 h-16 shrink-0 bg-muted rounded overflow-hidden relative">
-                      <Image
-                        src={`/api/files/${imageBlock.key}`}
-                        alt={`Stránka ${page.order}`}
-                        fill
-                        className="object-contain"
-                        unoptimized
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-24 h-16 shrink-0 bg-muted rounded flex items-center justify-center text-xs text-muted-foreground">
-                      {page.order}
-                    </div>
-                  )}
-
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">
-                      {page.title ?? `Stránka ${page.order}`}
-                    </p>
-                  </div>
-
-                  {/* Reorder + delete */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    <form action={moveUpAction}>
-                      <button
-                        type="submit"
-                        disabled={idx === 0}
-                        className="p-1.5 rounded hover:bg-muted disabled:opacity-30 transition-colors text-sm"
-                        title="Posunúť nahor"
-                      >
-                        ↑
-                      </button>
-                    </form>
-                    <form action={moveDownAction}>
-                      <button
-                        type="submit"
-                        disabled={idx === lesson.pages.length - 1}
-                        className="p-1.5 rounded hover:bg-muted disabled:opacity-30 transition-colors text-sm"
-                        title="Posunúť nadol"
-                      >
-                        ↓
-                      </button>
-                    </form>
-                    <form action={deletePageAction}>
-                      <button
-                        type="submit"
-                        className="p-1.5 rounded hover:bg-muted text-destructive transition-colors text-sm"
-                        title="Zmazať stránku"
-                      >
-                        ×
-                      </button>
-                    </form>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
+        <LessonPages
+          lessonId={lessonId}
+          courseId={id}
+          participantCount={lesson.course._count.participants}
+          pages={lesson.pages.map((page) => {
+            const blocks = parseContent(page.content)
+            return {
+              id: page.id,
+              order: page.order,
+              title: page.title,
+              imageKey: blocks.find((b): b is ImageBlock => b.type === "image")?.key ?? null,
+              textBlocks: blocks.filter((b) => b.type !== "image"),
+            }
+          })}
+        />
       </section>
     </div>
   )

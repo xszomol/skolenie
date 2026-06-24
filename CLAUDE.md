@@ -206,20 +206,22 @@ Caddy fetches TLS certificates automatically. The entrypoint applies `prisma db 
 
 **Note:** The production Dockerfile installs LibreOffice, poppler-utils, and python-pptx in the runner stage. PDF/PPT conversion works in production.
 
-## What Is Still TODO
+## Production Readiness
 
-### Must-fix before production
-1. ~~**Dockerfile: add LibreOffice + python-pptx**~~ — ✅ done; runner stage installs libreoffice, poppler-utils, python-pptx.
-2. ~~**MinIO CORS**~~ — ✅ done; `Caddyfile` injects `Access-Control-Allow-Origin` on the MinIO domain and handles preflight OPTIONS. MinIO healthcheck added to `docker-compose.prod.yml`.
+The app is ready for a first production deploy. All known gaps have been addressed:
 
-### Features / polish
-3. ~~**Mobile layout**~~ — ✅ done; `p-4 sm:p-6` main padding, `CourseHeader` flex-wrap, `LessonViewer` and `TestRunner` controls reflow on narrow screens.
-4. ~~**Participant progress on course detail**~~ — ✅ done; each participant row is a `<details>` element — click to expand per-lesson completion + test pass/fail status.
-5. ~~**Email delivery in production**~~ — ✅ done; `.env.production.example` documented with Brevo SMTP setup; `lib/email.ts` works as-is on port 587 (STARTTLS).
+- Docker image includes LibreOffice + python-pptx for PDF/PPT conversion
+- MinIO CORS handled at Caddy proxy layer (preflight + response headers)
+- Mobile-responsive layout across all pages
+- Per-participant lesson breakdown on course detail (expandable rows)
+- SMTP documented; `lib/email.ts` works with Brevo port 587 (STARTTLS)
+- Rate limiting: login 10/15 min per IP, forgot-password 5/15 min per IP, invitations 20/h per user
+- Blank page add button on lesson detail page
 
-### Nice-to-have
-6. ~~**Rate limiting**~~ — ✅ done; login: 10 attempts / 15 min per IP; invitations: 20 / hour per user; forgot-password: 5 / 15 min per IP (was already done).
-7. ~~**Lesson page blank-add button**~~ — ✅ done; `+ Pridať stránku` button in `LessonPages.tsx` header calls `addBlankPage` server action.
+**Next potential improvements** (not yet started):
+- In-memory rate limiter resets on server restart — replace with Redis if multi-instance deployment is needed
+- Admin dashboard: course-level overview across all courses
+- Richer content blocks: tables, code snippets, embedded video URL (currently upload-only)
 
 ## Architecture Notes
 

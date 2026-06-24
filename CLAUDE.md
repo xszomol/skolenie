@@ -247,10 +247,19 @@ Run `npm run db:seed` to create these accounts.
 | maria.kovac@skolenie.local | heslo123 | Účastník |
 | peter.horvath@skolenie.local | heslo123 | Účastník |
 
-Seed vytvorí 3 testovacie kurzy:
-- **Základy Goju-Ryu karate** — prebiehajúci (jún–aug 2026), 3 lekcie, 2 testy
-- **Bezpečnosť a ochrana zdravia pri práci** — plánovaný (aug 2026), 2 lekcie, 1 test
-- **Základy prvej pomoci** — ukončený (mar 2026), 2 lekcie, 2 testy
+Seed vytvorí 3 testovacie kurzy s realistickými dátami vrátane progress záznamov:
+
+**Základy Goju-Ryu karate** — prebiehajúci (jún–aug 2026), 3 lekcie, 2 testy
+- Ján Novák: lekcia 1 dokončená + test splnený (6/8, 75%), lekcia 2 rozpracovaná (2/3 strán)
+- Mária Kováč: lekcia 1 dokončená + test nesplnený 2× (3/8 → 4/8), zostáva 1 pokus
+- Peter Horváth: nepotvrdzený účastník, žiadny pokrok
+
+**Bezpečnosť a ochrana zdravia pri práci** — plánovaný (aug 2026), 2 lekcie, 1 test
+- Bez progress (kurz ešte nezačal)
+
+**Základy prvej pomoci** — ukončený (mar 2026), 2 lekcie, 2 testy
+- Mária Kováč: všetko dokončené, oba testy splnené (100% → zelená)
+- Peter Horváth: lekcia 1 dokončená + test splnený, lekcia 2 rozpracovaná (2/3 strán)
 
 ## Out of Scope (for now)
 

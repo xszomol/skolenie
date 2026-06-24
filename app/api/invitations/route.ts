@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { auth } from "@/auth"
 import { createInvitation } from "@/lib/invitations"
+import { checkRateLimit } from "@/lib/rate-limit"
 
 const schema = z.object({
   email: z.string().email(),
@@ -12,6 +13,10 @@ const schema = z.object({
 export async function POST(request: Request) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  if (!checkRateLimit(`inv:${session.user.id}`, 20, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 })
+  }
 
   const roles = session.user.roles ?? []
 

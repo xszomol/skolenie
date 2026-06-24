@@ -1,8 +1,10 @@
 import { signIn } from "@/auth"
 import { AuthError } from "next-auth"
 import { redirect } from "next/navigation"
+import { headers } from "next/headers"
 import Link from "next/link"
 import { GraduationCap } from "lucide-react"
+import { checkRateLimit } from "@/lib/rate-limit"
 
 export default async function LoginPage({
   searchParams,
@@ -13,6 +15,14 @@ export default async function LoginPage({
 
   async function login(formData: FormData) {
     "use server"
+    const headersList = await headers()
+    const ip =
+      headersList.get("x-forwarded-for")?.split(",")[0].trim() ??
+      headersList.get("x-real-ip") ??
+      "unknown"
+    if (!checkRateLimit(`login:${ip}`, 10, 15 * 60 * 1000)) {
+      redirect("/login?error=too-many")
+    }
     try {
       await signIn("credentials", {
         email: formData.get("email"),
@@ -45,6 +55,11 @@ export default async function LoginPage({
           {error === "invalid" && (
             <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">
               Nesprávny e-mail alebo heslo.
+            </p>
+          )}
+          {error === "too-many" && (
+            <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">
+              Príliš veľa pokusov. Skúste to znova o 15 minút.
             </p>
           )}
 

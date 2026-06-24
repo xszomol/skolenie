@@ -213,13 +213,13 @@ Caddy fetches TLS certificates automatically. The entrypoint applies `prisma db 
 2. ~~**MinIO CORS**~~ — ✅ done; `Caddyfile` injects `Access-Control-Allow-Origin` on the MinIO domain and handles preflight OPTIONS. MinIO healthcheck added to `docker-compose.prod.yml`.
 
 ### Features / polish
-3. **Mobile layout** — most pages are built desktop-first; needs responsive pass (nav, course list, lesson viewer, test runner).
-4. **Participant progress on course detail** — trainers can see which participants completed which lessons but the display could be more informative (per-participant breakdown).
-5. **Email delivery in production** — `.env.production.example` has SMTP placeholders; needs a real SMTP provider configured before invitations/password flows work.
+3. ~~**Mobile layout**~~ — ✅ done; `p-4 sm:p-6` main padding, `CourseHeader` flex-wrap, `LessonViewer` and `TestRunner` controls reflow on narrow screens.
+4. ~~**Participant progress on course detail**~~ — ✅ done; each participant row is a `<details>` element — click to expand per-lesson completion + test pass/fail status.
+5. ~~**Email delivery in production**~~ — ✅ done; `.env.production.example` documented with Brevo SMTP setup; `lib/email.ts` works as-is on port 587 (STARTTLS).
 
 ### Nice-to-have
-6. **Rate limiting** — `lib/rate-limit.ts` exists but is not wired to any endpoint yet; add to auth routes and invitation endpoint.
-7. **Lesson page blank-add button** — trainers can upload PDF/PPT or edit existing pages but there is no "add blank page" shortcut on the lesson detail page (only inside the editor).
+6. ~~**Rate limiting**~~ — ✅ done; login: 10 attempts / 15 min per IP; invitations: 20 / hour per user; forgot-password: 5 / 15 min per IP (was already done).
+7. ~~**Lesson page blank-add button**~~ — ✅ done; `+ Pridať stránku` button in `LessonPages.tsx` header calls `addBlankPage` server action.
 
 ## Architecture Notes
 

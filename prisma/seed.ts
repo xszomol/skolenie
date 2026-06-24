@@ -838,6 +838,150 @@ async function main() {
     console.log("    → 2 lekcie, 2 testy")
   }
 
+  // ── Progress: Course 1 (Goju-Ryu, active) ─────────────────────────────────
+  // Only seed if no progress exists yet (idempotent re-runs).
+  const c1ProgressCount = await prisma.lessonProgress.count({ where: { lesson: { courseId: course1.id } } })
+
+  if (c1ProgressCount === 0) {
+    const c1Lessons = await prisma.lesson.findMany({
+      where: { courseId: course1.id },
+      orderBy: { order: "asc" },
+      include: {
+        pages: { orderBy: { order: "asc" } },
+        test: {
+          include: { questions: { orderBy: { order: "asc" }, include: { answers: true } } },
+        },
+      },
+    })
+    const [historia, katy] = c1Lessons // lesson 3 (Výbava) has no test, skip
+
+    // Ján Novák — completed lesson 1 + passed test; lesson 2 in progress (2/3 pages)
+    for (const pg of historia.pages) {
+      await prisma.lessonPageProgress.create({
+        data: { userId: p1.id, pageId: pg.id, timeSpent: 120 + pg.order * 15, completedAt: new Date("2026-06-05") },
+      })
+    }
+    await prisma.lessonProgress.create({ data: { userId: p1.id, lessonId: historia.id, completedAt: new Date("2026-06-05") } })
+    if (historia.test) {
+      // Score 6/8 (75% ≥ 60% → pass): Q1–Q4 all correct, Q5 skipped (multi-select, 0 pts)
+      const attempt = await prisma.testAttempt.create({
+        data: { userId: p1.id, testId: historia.test.id, startedAt: new Date("2026-06-05T10:00:00Z"), finishedAt: new Date("2026-06-05T10:07:00Z"), score: 6, maxScore: 8, passed: true },
+      })
+      for (const q of historia.test.questions) {
+        const correct = q.answers.filter((a) => a.isCorrect).map((a) => a.id)
+        // Q5 has 2 correct answers (order 5); p1 skips it → 0 pts
+        await prisma.questionResponse.create({
+          data: { attemptId: attempt.id, questionId: q.id, selectedIds: q.order === 5 ? [] : correct },
+        })
+      }
+    }
+    for (const pg of katy.pages.slice(0, 2)) {
+      await prisma.lessonPageProgress.create({
+        data: { userId: p1.id, pageId: pg.id, timeSpent: 180, completedAt: new Date("2026-06-10") },
+      })
+    }
+
+    // Mária Kováč — completed lesson 1; test failed twice (1 retry left out of 2)
+    for (const pg of historia.pages) {
+      await prisma.lessonPageProgress.create({
+        data: { userId: p2.id, pageId: pg.id, timeSpent: 90 + pg.order * 20, completedAt: new Date("2026-06-03") },
+      })
+    }
+    await prisma.lessonProgress.create({ data: { userId: p2.id, lessonId: historia.id, completedAt: new Date("2026-06-03") } })
+    if (historia.test) {
+      // Attempt 1 — score 3/8 (37.5% < 60%): Q2 Miyagi(2pt) + Q3 Okinawa(1pt)
+      const a1 = await prisma.testAttempt.create({
+        data: { userId: p2.id, testId: historia.test.id, startedAt: new Date("2026-06-03T14:00:00Z"), finishedAt: new Date("2026-06-03T14:08:00Z"), score: 3, maxScore: 8, passed: false },
+      })
+      for (const q of historia.test.questions) {
+        const correct = q.answers.filter((a) => a.isCorrect).map((a) => a.id)
+        const wrong = q.answers.filter((a) => !a.isCorrect).map((a) => a.id)
+        await prisma.questionResponse.create({
+          data: { attemptId: a1.id, questionId: q.id, selectedIds: q.order === 2 || q.order === 3 ? correct.slice(0, 1) : wrong.slice(0, 1) },
+        })
+      }
+      // Attempt 2 — score 4/8 (50% < 60%): additionally gets Q4 "2009"(1pt)
+      const a2 = await prisma.testAttempt.create({
+        data: { userId: p2.id, testId: historia.test.id, startedAt: new Date("2026-06-07T09:00:00Z"), finishedAt: new Date("2026-06-07T09:09:00Z"), score: 4, maxScore: 8, passed: false },
+      })
+      for (const q of historia.test.questions) {
+        const correct = q.answers.filter((a) => a.isCorrect).map((a) => a.id)
+        const wrong = q.answers.filter((a) => !a.isCorrect).map((a) => a.id)
+        await prisma.questionResponse.create({
+          data: { attemptId: a2.id, questionId: q.id, selectedIds: q.order === 2 || q.order === 3 || q.order === 4 ? correct.slice(0, 1) : wrong.slice(0, 1) },
+        })
+      }
+    }
+
+    // Peter Horváth — not confirmed, no progress
+
+    console.log("    → Progress seeded: course 1")
+  }
+
+  // ── Progress: Course 3 (Prvá pomoc, finished) ──────────────────────────────
+  const c3ProgressCount = await prisma.lessonProgress.count({ where: { lesson: { courseId: course3.id } } })
+
+  if (c3ProgressCount === 0) {
+    const c3Lessons = await prisma.lesson.findMany({
+      where: { courseId: course3.id },
+      orderBy: { order: "asc" },
+      include: {
+        pages: { orderBy: { order: "asc" } },
+        test: {
+          include: { questions: { orderBy: { order: "asc" }, include: { answers: true } } },
+        },
+      },
+    })
+    const [ohrozenie, kpr] = c3Lessons
+
+    // Mária Kováč — completed both lessons, passed both tests (100% → green)
+    for (const lesson of c3Lessons) {
+      for (const pg of lesson.pages) {
+        await prisma.lessonPageProgress.create({
+          data: { userId: p2.id, pageId: pg.id, timeSpent: 200 + pg.order * 10, completedAt: new Date("2026-03-10") },
+        })
+      }
+      await prisma.lessonProgress.create({ data: { userId: p2.id, lessonId: lesson.id, completedAt: new Date("2026-03-10") } })
+      if (lesson.test) {
+        const maxS = lesson.test.questions.reduce((s, q) => s + q.points, 0)
+        const attempt = await prisma.testAttempt.create({
+          data: { userId: p2.id, testId: lesson.test.id, startedAt: new Date("2026-03-10T11:00:00Z"), finishedAt: new Date("2026-03-10T11:10:00Z"), score: maxS, maxScore: maxS, passed: true },
+        })
+        for (const q of lesson.test.questions) {
+          await prisma.questionResponse.create({
+            data: { attemptId: attempt.id, questionId: q.id, selectedIds: q.answers.filter((a) => a.isCorrect).map((a) => a.id) },
+          })
+        }
+      }
+    }
+
+    // Peter Horváth — completed lesson 1 + passed test; lesson 2 first 2/3 pages only
+    for (const pg of ohrozenie.pages) {
+      await prisma.lessonPageProgress.create({
+        data: { userId: p3.id, pageId: pg.id, timeSpent: 180 + pg.order * 12, completedAt: new Date("2026-03-12") },
+      })
+    }
+    await prisma.lessonProgress.create({ data: { userId: p3.id, lessonId: ohrozenie.id, completedAt: new Date("2026-03-12") } })
+    if (ohrozenie.test) {
+      const maxS = ohrozenie.test.questions.reduce((s, q) => s + q.points, 0)
+      const attempt = await prisma.testAttempt.create({
+        data: { userId: p3.id, testId: ohrozenie.test.id, startedAt: new Date("2026-03-12T14:00:00Z"), finishedAt: new Date("2026-03-12T14:08:00Z"), score: maxS, maxScore: maxS, passed: true },
+      })
+      for (const q of ohrozenie.test.questions) {
+        await prisma.questionResponse.create({
+          data: { attemptId: attempt.id, questionId: q.id, selectedIds: q.answers.filter((a) => a.isCorrect).map((a) => a.id) },
+        })
+      }
+    }
+    for (const pg of kpr.pages.slice(0, 2)) {
+      await prisma.lessonPageProgress.create({
+        data: { userId: p3.id, pageId: pg.id, timeSpent: 220, completedAt: new Date("2026-03-15") },
+      })
+    }
+
+    console.log("    → Progress seeded: course 3")
+  }
+
   console.log("\n✅ Seed dokončený!\n")
   console.log("Účty:")
   console.log("  admin@skolenie.local       / admin123   (Admin + Školiteľ)")

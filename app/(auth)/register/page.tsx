@@ -3,9 +3,10 @@ import { signIn } from "@/auth"
 import { notFound, redirect } from "next/navigation"
 import { headers } from "next/headers"
 import { checkRateLimit } from "@/lib/rate-limit"
+import { sendRegistrationConfirmationEmail } from "@/lib/email"
 import bcrypt from "bcryptjs"
 import Link from "next/link"
-import { GraduationCap } from "lucide-react"
+import { GraduationCap, MailCheck } from "lucide-react"
 
 // ── Open trainer self-registration (no token) ─────────────────────────────
 
@@ -33,17 +34,19 @@ function TrainerRegisterPage({ error }: { error?: string }) {
     if (existing) redirect("/register?error=email-taken")
 
     const passwordHash = await bcrypt.hash(password, 12)
-    await prisma.user.create({
+    const pending = await prisma.pendingTrainerRegistration.create({
       data: {
         email,
         firstName,
         lastName,
         passwordHash,
-        roles: { create: { role: "TRAINER" } },
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       },
     })
 
-    await signIn("credentials", { email, password, redirectTo: "/courses" })
+    await sendRegistrationConfirmationEmail({ to: email, firstName, token: pending.token }).catch(() => {})
+
+    redirect("/register?sent=1")
   }
 
   return (
@@ -142,15 +145,49 @@ function TrainerRegisterPage({ error }: { error?: string }) {
   )
 }
 
+function TrainerRegisterSentPage() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-muted/60 via-background to-muted/40 p-4">
+      <div className="w-full max-w-sm space-y-6">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+            <GraduationCap className="h-7 w-7" />
+          </span>
+          <h1 className="text-2xl font-semibold">Školenie</h1>
+        </div>
+
+        <div className="p-8 bg-card border rounded-xl shadow-lg space-y-4">
+          <div className="flex items-center gap-3">
+            <MailCheck className="h-6 w-6 text-primary shrink-0" />
+            <div>
+              <p className="text-sm font-medium">Skontrolujte svoju e-mailovú schránku.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Poslali sme vám odkaz na potvrdenie registrácie. Platí 24 hodín.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/login"
+            className="block w-full text-center border rounded-md px-4 py-2 text-sm hover:bg-muted transition-colors"
+          >
+            Späť na prihlásenie
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Invitation flow (with token) ──────────────────────────────────────────
 
 export default async function RegisterPage({
   searchParams,
 }: {
-  searchParams: Promise<{ token?: string; error?: string }>
+  searchParams: Promise<{ token?: string; error?: string; sent?: string }>
 }) {
-  const { token, error } = await searchParams
+  const { token, error, sent } = await searchParams
 
+  if (!token && sent === "1") return <TrainerRegisterSentPage />
   if (!token) return <TrainerRegisterPage error={error} />
 
   const invitation = await prisma.invitation.findUnique({

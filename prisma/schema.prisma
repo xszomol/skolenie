@@ -45,6 +45,18 @@ model PendingPasswordChange {
   createdAt       DateTime  @default(now())
 }
 
+model PendingTrainerRegistration {
+  id           String    @id @default(cuid())
+  token        String    @unique @default(cuid())
+  email        String
+  firstName    String
+  lastName     String
+  passwordHash String
+  expiresAt    DateTime
+  usedAt       DateTime?
+  createdAt    DateTime  @default(now())
+}
+
 model PasswordResetToken {
   id        String    @id @default(cuid())
   token     String    @unique @default(cuid())

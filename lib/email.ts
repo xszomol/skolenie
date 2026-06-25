@@ -53,6 +53,31 @@ export async function sendPasswordResetEmail({
   })
 }
 
+export async function sendRegistrationConfirmationEmail({
+  to,
+  firstName,
+  token,
+}: {
+  to: string
+  firstName: string
+  token: string
+}) {
+  const baseUrl = process.env.AUTH_URL ?? "http://localhost:3000"
+  const link = `${baseUrl}/confirm-registration?token=${token}`
+
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM ?? "noreply@skolenie.local",
+    to,
+    subject: "Potvrdenie registrácie — Školenie",
+    html: `
+      <p>Dobrý deň, ${firstName},</p>
+      <p>Pre dokončenie registrácie ako školiteľ kliknite na odkaz nižšie:</p>
+      <p><a href="${link}">Potvrdiť registráciu</a></p>
+      <p>Odkaz platí 24 hodín. Ak ste sa neregistrovali, tento e-mail ignorujte.</p>
+    `,
+  })
+}
+
 export async function sendInvitationEmail({
   to,
   inviterName,

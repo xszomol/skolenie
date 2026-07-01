@@ -97,6 +97,13 @@ export default async function LoginPage({
           </button>
           </form>
         </div>
+
+        <p className="text-center text-sm text-muted-foreground">
+          Chcete školiť?{" "}
+          <Link href="/register" className="text-foreground font-medium hover:underline">
+            Zaregistrujte sa ako školiteľ
+          </Link>
+        </p>
       </div>
     </div>
   )
